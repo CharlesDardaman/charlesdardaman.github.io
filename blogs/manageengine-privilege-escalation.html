@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ManageEngine Privilege Escalation</title>
+    <meta name="description" content="Walkthrough of a DLL hijacking issue in multiple ManageEngine products that allows local privilege escalation to SYSTEM." />
+    <link rel="stylesheet" href="../assets/css/blog.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="masthead__inner">
+        <div class="brand">
+          <a class="brand__link" href="../index.html">Charles Dardaman</a>
+          <p class="brand__tagline">Security engineering, incident response, research.</p>
+        </div>
+        <nav class="site-nav" aria-label="Primary">
+          <ul>
+            <li><a href="../index.html#about">About</a></li>
+            <li><a href="../index.html#writing">Writing</a></li>
+            <li><a href="../index.html#connect">Connect</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <header class="post-header">
+      <h1>ManageEngine Privilege Escalation</h1>
+      <p><time datetime="2019-07-16">July 16, 2019</time></p>
+    </header>
+
+    <main>
+      <article>
+        <p><em>This article was originally published at <a href="https://www.cyberonesecurity.com/manageengine-privilege-escalation/" target="_blank" rel="noopener">https://www.cyberonesecurity.com/manageengine-privilege-escalation/</a> and is duplicated here for posterity.</em></p>
+
+        <p><strong>Background:<br /></strong>
+        After running into ManageEngine products on a number of penetration tests, we decided to take a closer look at their products and see if there were any vulnerabilities that we could take advantage of.</p>
+
+        <p><strong><br />
+        CVE Numbers:<br /></strong>
+        CVE-2019-12876</p>
+
+        <p><strong><br />
+        Versions Tested:<br /></strong>
+        DesktopCentral – 10.0.380<br />
+        ADSelfService Plus – 5.7<br />
+        ADManager Plus – 6.6.5</p>
+
+        <p><strong><br />
+        DLL Hijacking:<br /></strong>
+        Multiple ManageEngine products run as System on startup and have bad file permissions. The services keep their data in C:ManageEngine by default and any user can write to these folders. This makes the applications vulnerable to DLL hijacking allowing low-level users to escalate their privileges.</p>
+
+        <figure>
+          <img src="../images/61dcfcd89c4066e602464887_figure-1.png" alt="Permissions on the ManageEngine directory" />
+          <figcaption>Figure 1 – Permissions</figcaption>
+        </figure>
+
+        <p>In order to take advantage of this, we just need to generate a DLL and rename it to any DLL that the binary loads when it runs. In this case, we will show how to take advantage of DesktopCentral loading Secur32.dll</p>
+
+        <p>To start, we needed a custom DLL that would execute what we wanted in order to prove privilege escalation. We wrote a simple DLL with the code below, which will create the user pwned and then add that user to the local administrator’s group.</p>
+
+        <figure>
+          <img src="../images/61dcfcd8edd291365719941e_code-1024x452.png" alt="Code snippet creating a local administrator" />
+        </figure>
+
+        <p>We then compiled it as a 32bit DLL, renamed it to Secur32.dll and put it into the bin folder, which any user has access too as shown below.</p>
+
+        <figure>
+          <img src="../images/61dcfcd82c873c5553e15df9_figure-2-3.png" alt="ManageEngine bin directory with the malicious DLL" />
+          <figcaption>Figure 2 – Permissions</figcaption>
+        </figure>
+
+        <p>Once the DLL is in place, you can restart the service either manually with an Admin account or by rebooting the machine. Once the service is restarted, the DLL will be loaded by the service and our code will execute giving us a new Admin user on the system.</p>
+
+        <figure>
+          <img src="../images/61dcfcd8f3f1a897ad928292_figure-3-300x9.png" alt="Process Monitor showing the DLL call" />
+          <figcaption>Figure 3 – DLL Called</figcaption>
+        </figure>
+
+        <figure>
+          <img src="../images/61dcfcd8f0eb77677b65b0f3_figure-4-2-1024x484.png" alt="Command prompt output illustrating admin user creation" />
+          <figcaption>Figure 4 – Admin User Created</figcaption>
+        </figure>
+
+        <figure>
+          <img src="../images/61dcfcd88480a1a24bfccaa3_figure-5.png" alt="Windows user manager showing the new admin user" />
+          <figcaption>Figure 5 – New Admin User</figcaption>
+        </figure>
+
+        <p><strong>Vendor Response:<br /></strong>
+        ManageEngine has patched the issue in their DesktopCentral product but states that the issue is a feature in their other offerings and will provide guidance around it for their customers.</p>
+
+        <figure>
+          <img src="../images/61dcfcd80ec42008420dada8_figure-6-1024x208.png" alt="Vendor response statement" />
+        </figure>
+
+        <p><strong><br />
+        Disclosure Timeline:<br /></strong>
+        2019-03-20 – Vulnerability Disclosed to Vendor<br />
+        2019-04-10 – Vulnerability acknowledged and fix in the works<br />
+        2019-06-18 – Vendor responds saying they have fixed it in some products</p>
+
+        <p><strong><br />
+        Credit:<br />
+        </strong>
+        Chase Dardaman | Adversarial Engineer | Offensive Security<br />
+        Quentin Rhoads-Herrera | Offensive Security Manager | Offensive Security</p>
+      </article>
+      <div class="footer">
+        <a href="../index.html">← Back to homepage</a>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p>&copy; <span id="current-year"></span> Charles Dardaman</p>
+    </footer>
+
+    <script>
+      const year = new Date().getFullYear();
+      document.getElementById("current-year").textContent = year;
+    </script>
+  </body>
+</html>

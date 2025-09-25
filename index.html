@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Charles Dardaman</title>
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="masthead__inner">
+        <div class="brand">
+          <a class="brand__link" href="/">Charles Dardaman</a>
+          <p class="brand__tagline">Security engineering, incident response, research.</p>
+        </div>
+        <nav class="site-nav" aria-label="Primary">
+          <ul>
+            <li><a href="#about">About</a></li>
+            <li><a href="#writing">Writing</a></li>
+            <li><a href="#connect">Connect</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section id="about" class="section section--about">
+        <div class="about">
+          <div class="about__portrait" aria-hidden="true">
+            <span class="about__initials">CD</span>
+          </div>
+          <div class="about__content">
+            <h1>About</h1>
+            <p>
+              I am a security engineer focused on safeguarding complex systems, tracking down intrusions, and building pragmatic defenses. Over the past decade I have led incident response programs, advised product teams on threat models, and carried out niche research projects ranging from malware reversing to embedded systems triage.
+            </p>
+            <p>
+              These days I split time between hands-on security work, mentoring teams, and writing practical guides born out of real-world lessons. Off the keyboard you'll usually find me climbing, studying new hardware gadgets, or brewing very strong coffee.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="writing" class="section section--writing">
+        <header class="section__header">
+          <h2>Selected Writing</h2>
+          <p>Technical notes, walkthroughs, and case studies from past projects.</p>
+        </header>
+        <div class="writing">
+          <article class="writing__item">
+            <p class="writing__date">Jul 16, 2019</p>
+            <h3 class="writing__title">
+              <a href="blogs/manageengine-privilege-escalation.html">ManageEngine Privilege Escalation</a>
+            </h3>
+            <p class="writing__excerpt">Leveraging lax ACLs and DLL hijacking in multiple ManageEngine products to escalate from user access to SYSTEM.</p>
+          </article>
+          <article class="writing__item">
+            <p class="writing__date">May 8, 2018</p>
+            <h3 class="writing__title">
+              <a href="blogs/js-coinhive-in-excel.html">JavaScript Coinhive in Excel</a>
+            </h3>
+            <p class="writing__excerpt">Exploring the attack surface created by Excel&apos;s custom JavaScript functions and building a proof-of-concept miner.</p>
+          </article>
+          <article class="writing__item">
+            <p class="writing__date">May 25, 2018</p>
+            <h3 class="writing__title">
+              <a href="blogs/malwaretech-shellcode-challenge-1.html">MalwareTech Shellcode Challenge 1</a>
+            </h3>
+            <p class="writing__excerpt">Reverse engineering a compact Windows binary to recover an obfuscated flag using IDA Pro and Python.</p>
+          </article>
+          <article class="writing__item">
+            <p class="writing__date">May 26, 2018</p>
+            <h3 class="writing__title">
+              <a href="blogs/malwaretech-shellcode-challenge-2.html">MalwareTech Shellcode Challenge 2</a>
+            </h3>
+            <p class="writing__excerpt">Static analysis of a shellcode-heavy binary leveraging dynamic imports, file IO, and XOR decoding.</p>
+          </article>
+          <article class="writing__item">
+            <p class="writing__date">Dec 27, 2018</p>
+            <h3 class="writing__title">
+              <a href="blogs/finding-credentials-cve-2018-5560.html">Finding Credentials – CVE-2018-5560</a>
+            </h3>
+            <p class="writing__excerpt">Uncovering hard-coded AWS keys inside the Guardzilla security system firmware and coordinating disclosure.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="connect" class="section section--connect">
+        <header class="section__header">
+          <h2>Connect</h2>
+          <p>Best ways to reach me or follow ongoing work.</p>
+        </header>
+        <div class="connect">
+          <div class="connect__links">
+            <a class="connect__link" href="mailto:charles@dardaman.com">Email</a>
+            <a class="connect__link" href="https://www.linkedin.com/in/charlesdardaman" target="_blank" rel="noopener">LinkedIn</a>
+            <a class="connect__link" href="https://twitter.com/CharlesDardaman" target="_blank" rel="noopener">Twitter</a>
+            <a class="connect__link" href="https://github.com/charlesdardaman" target="_blank" rel="noopener">GitHub</a>
+          </div>
+          <p class="connect__note">All opinions shared here are my own and do not represent past or present employers.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>&copy; <span id="current-year"></span> Charles Dardaman</p>
+    </footer>
+
+    <script>
+      const year = new Date().getFullYear();
+      document.getElementById("current-year").textContent = year;
+    </script>
+  </body>
+</html>

@@ -11,7 +11,7 @@
       <div class="masthead__inner">
         <div class="brand">
           <a class="brand__link" href="/">Charles Dardaman</a>
-          <p class="brand__tagline">Security engineering, incident response, research.</p>
+          <p class="brand__tagline">Hacking, research, and writings.</p>
         </div>
         <nav class="site-nav" aria-label="Primary">
           <ul>
@@ -30,9 +30,9 @@
             <span class="about__initials">CD</span>
           </div>
           <div class="about__content">
-            <h1>About</h1>
+            <!-- <h1>About</h1> -->
             <p>
-              I’m currently on a break from industry while pursuing a master’s at UT Austin, where my thesis focuses on reinforcement learning. Previously, I co-founded Vector0, which was later acquired by Stratascale (an SHI company). I’ve spent more than a decade in information security, primarily offensive work, where I helped uncover multiple CVEs and authored the open-source C2 framework <a href="https://github.com/DeimosC2/DeimosC2">DeimosC2</a>.
+              I’m currently on a break from industry while pursuing a master's degree at UT Austin, where my thesis focuses on reinforcement learning. Previously, I co-founded Vector0, which was acquired by Stratascale (an SHI company). I’ve spent more than a decade in information security, primarily offensive work, where I discovered multiple CVEs and authored the open-source C2 framework <a href="https://github.com/DeimosC2/DeimosC2">DeimosC2</a>.
             </p>
             <p>
               These days I spend my time studying machine learning and working on research.
@@ -134,19 +134,25 @@
         </div>
       </section>
 
-      <section id="connect" class="section section--connect">
-        <header class="section__header">
-          <h2>Connect</h2>
-          <p>Best ways to reach me or follow ongoing work.</p>
-        </header>
+      <section id="connect" class="section section--connect" aria-labelledby="connect-heading">
+        <h2 class="sr-only" id="connect-heading">Connect</h2>
         <div class="connect">
-          <div class="connect__links">
-            <a class="connect__link" href="https://twitter.com/CharlesDardaman" target="_blank" rel="noopener">Twitter</a>
-            <a class="connect__link" href="https://bsky.app/profile/charles.dardaman.com" target="_blank" rel="noopener">BlueSky</a>
-            <a class="connect__link" href="https://github.com/charlesdardaman" target="_blank" rel="noopener">GitHub</a>
-            <a class="connect__link" href="https://www.linkedin.com/in/charlesdardaman" target="_blank" rel="noopener">LinkedIn</a>
-            
-          </div>
+          <a class="connect__icon" href="https://twitter.com/CharlesDardaman" target="_blank" rel="noopener">
+            <span class="sr-only">Twitter</span>
+            <img src="icons/Logo_of_Twitter.svg" alt="" loading="lazy" />
+          </a>
+          <a class="connect__icon" href="https://bsky.app/profile/charles.dardaman.com" target="_blank" rel="noopener">
+            <span class="sr-only">Bluesky</span>
+            <img src="icons/Bluesky_Logo.svg" alt="" loading="lazy" />
+          </a>
+          <a class="connect__icon" href="https://github.com/charlesdardaman" target="_blank" rel="noopener">
+            <span class="sr-only">GitHub</span>
+            <img src="icons/Octicons-mark-github.svg" alt="" loading="lazy" />
+          </a>
+          <a class="connect__icon" href="https://www.linkedin.com/in/charlesdardaman" target="_blank" rel="noopener">
+            <span class="sr-only">LinkedIn</span>
+            <img src="icons/Linkedin_circle.svg" alt="" loading="lazy" />
+          </a>
         </div>
       </section>
     </main>

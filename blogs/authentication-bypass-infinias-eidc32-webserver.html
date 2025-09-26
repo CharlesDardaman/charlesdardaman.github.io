@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Authentication Bypass Vulnerability Discovered in Infinias eIDC32 WebServer</title>
+    <meta name="description" content="Identifying an authentication bypass in the Infinias eIDC32 web interface that grants administrative access through manipulated client-side checks." />
+    <link rel="stylesheet" href="../assets/css/blog.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="masthead__inner">
+        <div class="brand">
+          <a class="brand__link" href="../index.html">Charles Dardaman</a>
+          <p class="brand__tagline">Security engineering, incident response, research.</p>
+        </div>
+        <nav class="site-nav" aria-label="Primary">
+          <ul>
+            <li><a href="../index.html#about">About</a></li>
+            <li><a href="../index.html#writing">Writing</a></li>
+            <li><a href="../index.html#connect">Connect</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <header class="post-header">
+      <h1>Authentication Bypass Vulnerability Discovered in Infinias eIDC32 WebServer</h1>
+      <p><time datetime="2020-03-23">March 23, 2020</time></p>
+    </header>
+
+    <main>
+      <article>
+        <p><em>This article was originally published at <a href="https://cyberonesecurity.com/offensive-security/authentication-bypass-vulnerability-discovered-in-infinias-eidc32-webserver/" target="_blank" rel="noopener">https://cyberonesecurity.com/offensive-security/authentication-bypass-vulnerability-discovered-in-infinias-eidc32-webserver/</a> and is duplicated here for posterity.</em></p>
+
+        <p><strong>By CyberOne Security Team</strong></p>
+        <p>This article was written by members of the CyberOne Security Team, drawing on decades of combined experience in cloud and network security, penetration testing, threat intelligence, and advisory services.</p>
+
+        <p><strong>Versions Tested:<br /></strong>Web Revision: 1.107, Board: 3.001, Firmware: 2.213</p>
+        <p><strong>Product:<br /></strong><a href="https://www.3xlogic.com/products/access-control/infinias-ethernet-enabled-integrated-door-controller-eidc" target="_blank" rel="noopener">https://www.3xlogic.com/products/access-control/infinias-ethernet-enabled-integrated-door-controller-eidc</a></p>
+        <p><strong>Security Advisories:<br /></strong>N/A</p>
+        <p><strong>CVE Numbers:<br /></strong>CVE-2020-11542</p>
+        <p><strong>CVSS Score:<br /></strong>N/A</p>
+        <p><strong>CWE:<br /></strong>CWE-305: Authentication Bypass by Primary Weakness</p>
+        <p><strong>NIST:<br /></strong>IA-4: Identifier Management</p>
+        <p><strong>OWASP:<br /></strong>A2: Broken Authentication</p>
+
+        <p>With access to a system's control interface, a malicious actor can unlock controls remotely, allowing them to gain physical entry to restricted areas. However, lessons learned from other breaches can help everyone better understand how to prevent unwanted access.</p>
+
+        <p>During an internal penetration test, our team discovered a physical access control system from Infinias on the target network. As luck would have it, the device was still configured with default credentials, which allowed us to log in and look around. After briefly browsing the manufacturer's site and reading their documentation, it became clear that this could be an interesting target as the Infinias eIDC is a PoE-enabled door controller that allows one or more physical access control systems to be integrated into a network for ease of management. It was interesting to find a device configured to still accept default credentials. However, we did notice something else that was strange. When reviewing HTTP logs in Burp Suite, the string <em>"CMD"</em> was found in a number of requests. That sounded juicy, so we did what red teamers do and started chasing the white rabbit down a hole.</p>
+
+        <p>We discovered that the Infinias eIDC32 WebServer has an exploitable authentication bypass vulnerability due to unsecure authentication methods handled on the client-side JavaScript. This would have been more difficult to identify without a set of valid credentials, whether default or not. However, with physical access to IoT devices like these, the firmware can be pulled off and analyzed to take an even deeper dive.</p>
+
+        <p><strong>Technical Details:</strong></p>
+        <p>Greeted with the device's web interface we were able to log in using default credentials found within their documentation.</p>
+
+        <figure>
+          <img src="../images/61dcfcf6ea584287fc7a0973_1-e1584996447554.png" alt="Infinias web UI login page" />
+          <figcaption>Figure 1 – Web UI Login</figcaption>
+        </figure>
+
+        <p>While watching the traffic in Burp Suite, this little gem stood out immediately.</p>
+
+        <figure>
+          <img src="../images/61dcfcf64fc6e5b7d527cb2c_2-e1584996636623.png" alt="HTTP request containing the CMD string" />
+          <figcaption>Figure 2 – HTTP Request With String "CMD"</figcaption>
+        </figure>
+
+        <p>When intercepted, this is the HTTP response to the request with valid credentials:</p>
+
+        <figure>
+          <img src="../images/61dcfcf69c406658124648b3_3-e1584996605320.png" alt="Burp Suite response after a valid login" />
+          <figcaption>Figure 3 – Intercepted HTTP Response from a Valid Login</figcaption>
+        </figure>
+
+        <p>At this point, we decided to take a look at the source code to see how the authentication was being handled. A quick search for the string <em>"LGI"</em> returned the following bit of vulnerable code:</p>
+
+        <figure>
+          <img src="../images/61dcfcf61dfcc370b628ae41_4-e1584996755392-1024x460.png" alt="Client-side JavaScript handling authentication" />
+          <figcaption>Figure 4 – Vulnerable Client-side Authentication JavaScript</figcaption>
+        </figure>
+
+        <p>This section simply hex encodes the username and password and adds a <em>"00"</em> between the two encoded values. The next step was to start digging in to see the differences between valid and invalid credentials. Submitting another authentication request with invalid credentials (UN: AAAA PW: AAAA) confirmed this.</p>
+
+        <figure>
+          <img src="../images/61dcfcf65b59f0393bf41bba_5-e1584996833268-1024x263.png" alt="Response differences between valid and invalid logins" />
+          <figcaption>Figure 5 – Intercepted HTTP Response Demonstrating Encoding Methods</figcaption>
+        </figure>
+
+        <p>Comparing the HTTP responses of invalid and valid credentials, the difference becomes clear. The HTTP response to the successful login contains the string <em>"&lt;KEY&gt;MYKEY&lt;/KEY&gt;"</em> in the XML body data, whereas the failed login does not.</p>
+
+        <p>Using Burp Suite, we intercepted the eIDC32 WebServer's response to our login attempt using invalid credentials. From there, we added the string <em>"&lt;KEY&gt;MYKEY&lt;/KEY&gt;"</em> to the XML body data to match the successful login response and forwarded the response.</p>
+
+        <figure>
+          <img src="../images/61dcfcf6f99ba0e5218f878a_6-1024x294.png" alt="Editing the invalid login response to include MYKEY" />
+          <figcaption>Figure 6 – Editing Invalid Login Response to Add the Value "MYKEY"</figcaption>
+        </figure>
+
+        <p>Changing this value in the HTTP response bypasses the client-side JavaScript controls, allowing an attacker with invalid credentials to bypass the login process of the device and access it as an administrative user.</p>
+
+        <figure>
+          <img src="../images/61dcfcf6facf8ab294f7889b_7.png" alt="Infinias system control panel after bypass" />
+          <figcaption>Figure 7 – The Infinias System's Control Panel</figcaption>
+        </figure>
+
+        <p><strong>Lessons learned<br /></strong>While central management of networked access control systems can be a huge convenience, it is important to ensure that the systems are configured properly, kept updated, and to disable or change any default accounts to prevent malicious activity.</p>
+
+        <p><strong>Timeline:<br /></strong>3/20/2019 – First communication sent to the vendor<br />
+        3/22/2019 – Technical Support replies saying it will be sent to the "access team" for review<br />
+        3/25/2019 – Response from a second technical support employee:</p>
+
+        <p><em>"What vulnerability are you speaking of? We do get flagged on occasion for different things. To my knowledge, most or all have a workaround"</em></p>
+
+        <p>3/25/2019 – Back and forth discussing finding, submitted PDF with additional details, no response.<br />
+        4/8/2019 – Still no response, I reached back out to no avail.<br />
+        9/30/2019 – The client met with a rep from Stanley Security, 3XLogic's parent company, and connected us. All info including the write-up and previous emails were sent to Stanley Security.<br />
+        2/27/2020 – No response still<br />
+        3/12/2020 – Submitted for CVE</p>
+
+        <p><strong>Credit:<br /></strong>Discovered by the following Security Researchers at CyberOne<br />
+        Quentin Rhoads-Herrera, Director of Professional Services<br />
+        Cory Mathews, Offensive Security Manager<br />
+        Chase Dardaman, Senior Adversarial Engineer</p>
+      </article>
+      <div class="footer">
+        <a href="../index.html">← Back to homepage</a>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p>&copy; <span id="current-year"></span> Charles Dardaman</p>
+    </footer>
+
+    <script>
+      const year = new Date().getFullYear();
+      document.getElementById("current-year").textContent = year;
+    </script>
+  </body>
+</html>

@@ -131,16 +131,18 @@ main {
   width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 24px;
-  background: linear-gradient(160deg, #dcdfe4, #bfc3c9);
-  display: grid;
-  place-items: center;
-  font-size: clamp(48px, 10vw, 72px);
-  font-weight: 600;
-  color: #3d3f44;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-soft);
+  background: var(--color-surface);
 }
 
-.about__initials {
-  letter-spacing: 0.16em;
+.about__portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+  display: block;
 }
 
 .about__content h1 {

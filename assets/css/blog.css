@@ -175,7 +175,8 @@ figure {
   margin: 0 0 28px;
 }
 
-figure img {
+figure img,
+figure video {
   width: 100%;
   display: block;
   border-radius: 20px;
@@ -183,10 +184,65 @@ figure img {
   box-shadow: 0 12px 36px rgba(35, 37, 40, 0.15);
 }
 
+figure video {
+  height: auto;
+  background: #000;
+}
+
 figure figcaption {
   margin-top: 10px;
   font-size: 14px;
   color: var(--color-muted);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 32px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  overflow: hidden;
+  font-size: 16px;
+}
+
+table caption {
+  caption-side: bottom;
+  padding: 12px 18px;
+  font-size: 15px;
+  color: var(--color-muted);
+  text-align: left;
+}
+
+table thead th {
+  background: #eef0f3;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+table th,
+table td {
+  padding: 14px 18px;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+table th:last-child,
+table td:last-child {
+  border-right: none;
+}
+
+table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+table tbody tr:nth-child(even) td {
+  background: #f9fafc;
 }
 
 .footer {
@@ -241,5 +297,14 @@ figure figcaption {
 
   p {
     font-size: 17px;
+  }
+
+  table {
+    font-size: 15px;
+  }
+
+  table th,
+  table td {
+    padding: 12px 14px;
   }
 }

